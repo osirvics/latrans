@@ -17,7 +17,7 @@ class User(Base):
     surname = Column(String)
     picture = Column(String)
     email = Column(String)
-    ratings = Column(Integer, default=0)
+    phone_no = Column(String)
     password_hash = Column(String)
     user_id = Column(String)
 
@@ -30,8 +30,8 @@ class User(Base):
         'username' : self.username,
         'picture' : self.picture,
         'email' : self.email,
-        'ratings' : self.ratings,
         'name' : self.name,
+        'phone_no': self.phone_no,
         'surname' : self.surname
                 
             }
@@ -42,12 +42,13 @@ class User(Base):
     def verify_password(self, password):
         return pwd_context.verify(password, self.password_hash)
 
-    def generate_auth_token(self, expiration=600):
+    def generate_auth_token(self, expiration = 600):
     	s = Serializer(secret_key, expires_in = expiration)
     	return s.dumps({'id': self.id })
 
     @staticmethod
     def verify_auth_token(token):
+        
     	s = Serializer(secret_key)
     	try:
     		data = s.loads(token)
@@ -88,11 +89,12 @@ class Trip(Base):
         'traveling_to_state' : self.traveling_to_state,
         'traveling_to_city' : self.traveling_to_city,
         'traveling_date' : self.traveling_date,
+        'profile_image' :  self.profile_image,
         'posted_on' : self.posted_on,
         'time_updated' : self.time_updated,
         'user_id' : self.user_id
 
-        
+    
             }
 
 class Request(Base):

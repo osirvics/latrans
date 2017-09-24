@@ -123,11 +123,6 @@ def login(provider):
 @auth.login_required
 def get_auth_token():
 
-
-    # token = g.user.generate_auth_token()
-    # return jsonify({'token': token.decode('ascii')})
-
-
     user = session.query(User).filter_by(username = g.user.username).first()
     token = g.user.generate_auth_token()
     user_token =  token.decode('ascii');
@@ -140,15 +135,19 @@ def get_auth_token():
 
 @app.route('/api/v1/users/<int:user_id>/messages')
 def showAllMessages(user_id):
-    
     messages = session.query(Message).filter(or_(Message.sender_id == user_id, Message.recipient_id == user_id)).all()
-
     return jsonify({
         "messages": [message.serialize for message in messages]
      }) 
 
+@app.route('/api/v1/conversations/<int:conversation_id>/messages')
+def showMessagesForConversation(conversation_id):
+    messages = session.query(Message).filter_by(conversation_id = conversation_id).all()
+    return jsonify({
+        "messages": [message.serialize for message in messages]
+     }) 
 
-@app.route('/api/v1/send/push/message', methods = ['POST'])
+@app.route('/api/v1/messages/send', methods = ['POST'])
 def sendPush():
     #message = request.get_json()
 
@@ -299,6 +298,30 @@ def getAlluser():
     #return jsonify({'username': user.username})
     return  jsonify(users = [user.serialize for user in users])
 
+@app.route('/api/v1/users/<int:user_id>/modify', methods = ['PUT'])
+def editUser(user_id):
+    phone_no = request.json.get('phone_no')
+    name = request.json.get('name')
+    picture = request.json.get('picture')
+    user = session.query(User).filter_by(id =user_id).first()
+    if name:
+        user.name = name
+    if picture:
+         user.picture = picture
+    if phone_no:
+         user.phone_no = phone_no
+    session.add(user)
+    session.commit()
+    g.user = user
+    token = g.user.generate_auth_token()
+    #return jsonify({'token': token.decode('ascii')})
+    user_token =  token.decode('ascii');
+
+    return jsonify({
+        "token": user_token,
+        "user": user.serialize
+     })
+    #
     # return jsonify({
     #     "token": "token"
     #     "user": [user.serialize for user in users]
@@ -343,6 +366,14 @@ def showAllTrips():
         "trips": [trip.serialize for trip in trips]
      }) 
 
+@app.route('/api/v1/conversations')
+def showAllConversations():
+    conversations = session.query(Conversation).all()
+    count = session.query(Conversation).count()
+    return jsonify({
+        "total_conversations": count,
+        "conversations": [conversation.serialize for conversation in conversations]
+     }) 
     #return jsonify(trips = [trip.serialize for trip in trips])
 
 # Show all trips of a particular user
@@ -358,8 +389,8 @@ def showATrip(trip_id):
     return jsonify(trip = trip.serialize)
 
 
-@app.route('/api/v1/send/push/trips/new/<int:user_id>', methods = ['POST'])
-@auth.login_required
+@app.route('/api/v1/trips/<int:user_id>/new', methods = ['POST'])
+#@auth.login_required
 def createNewTrip(user_id):
     if request.method == 'POST':
         phone_no = request.json.get('phone_no')
@@ -371,15 +402,17 @@ def createNewTrip(user_id):
         posted_on = request.json.get('posted_on')
         time_updated = request.json.get('time_updated')
         profile_image = request.json.get(' profile_image')
-        id_user = user_id
+        user_id = user_id
         newTrip = Trip(phone_no = phone_no, traveling_from_state = traveling_from_state, 
             traveling_from_city = traveling_from_city, traveling_to_state = traveling_to_state,
             traveling_to_city = traveling_to_city, traveling_date = traveling_date, posted_on = posted_on, 
-            time_updated = time_updated, profile_image = profile_image, user_id = id_user,
+            time_updated = time_updated, profile_image = profile_image, user_id = user_id
         )
         session.add(newTrip)
         session.commit()
+        user = session.query(User).filter_by(id = user_id).first()
         trip_payload = {}
+        trip_payload['profile_image'] = user.picture
         trip_payload['id'] = newTrip.id
         trip_payload['phone_no'] = phone_no
         trip_payload['traveling_from_state'] = traveling_from_state
@@ -388,8 +421,20 @@ def createNewTrip(user_id):
         trip_payload['traveling_to_city'] = traveling_to_city
         trip_payload['traveling_date'] = traveling_date
         trip_payload['posted_on'] = posted_on
-        trip_payload['id_user'] = user_id
-        trip_data = json.dumps(trip_payload)
+        trip_payload['time_updated'] =  time_updated
+        trip_payload['user_id'] = user_id
+
+        #trip_data = json.dumps(trip_payload)
+
+        raw = {
+        "data": trip_payload
+        }
+
+        trip_data = json.dumps(raw)
+        #result = push_service.notify_single_device(registration_id = reg_id, data_message= payload) 
+        result = push_service.notify_topic_subscribers(topic_name = TRIP_TOPIC,  data_message = trip_payload)
+        pprint(result)
+        return trip_data
         
         #result = push_service.notify_single_device(registration_id = reg_id, data_message = trip_data)
         # data = {
@@ -399,7 +444,7 @@ def createNewTrip(user_id):
         # "authorKey": "key_jlin"
         # }
         #result = push_service.notify_topic_subscribers(topic_name= TRIP_TOPIC,  data_message = data) 
-        return jsonify(newTrip.serialize)
+        #return jsonify(newTrip.serialize)
         
 
 # @auth.error_handler
@@ -437,7 +482,6 @@ def editATrip(trip_id):
 def updateTrip(trip_id, phone_no, traveling_from_state, traveling_from_city, traveling_to_state, traveling_to_city,
         traveling_date, posted_on, time_updated, profile_image):
     trip = session.query(Trip).filter_by(id = trip_id).one()
-    print(traveling_from_city)
 
     trip.phone_no = phone_no
     trip.traveling_from_state = traveling_from_state
