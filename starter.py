@@ -453,7 +453,7 @@ def deleteATrip(id, user_id):
     return redirect(url_for('showTripsForUser', user_id = user_id))
 
 @app.route("/api/v1/trips/delete", methods = ['DELETE'])
-def deleteAllTrip():
+def deleteAllTrips():
     trips = session.query(Trip).all()
     count = session.query(Trip).count()
     for trip in trips:
