@@ -165,6 +165,7 @@ class Message(Base):
     sender_last_name = Column(String)
     sender_picture = Column(String)
     message = Column(String)
+    sent_status = Column(String)
     time_sent = Column(Bigint)
     conversation_id = Column(Integer,  ForeignKey('conversation.id'), index = True)
     sender = relationship("User",  foreign_keys = "Message.sender_id")
@@ -181,6 +182,7 @@ class Message(Base):
         'sender_first_name' : self.sender_first_name,
         'sender_last_name' : self.sender_last_name,
         'sender_picture' : self.sender_picture,
+        'sent_status'    : self.sent_status,
         'message' : self.message,
         'time_sent' : self.time_sent,
         'conversation_id' : self.conversation_id

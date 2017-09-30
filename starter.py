@@ -38,6 +38,7 @@ push_service = FCMNotification(api_key= "AIzaSyDTFG3_cpy4g8oiNlAuNN5ux2Ao5uSEhOQ
 reg_id = "fsYv_1fYukk:APA91bH7q15EiAhto98t2Ok4TR-4Ipx3WzhM1MwDJSLYLpfXu8oQpcYDGnNzqgE2SyM4b2DPOKUmjne-mYRjmlyC7aSBvoZKSFe4bWQbeTse8d8Zn61SkK5d2vRzuUo4ksGP71eoMJ0r"
 TRIP_TOPIC = "trips_fcm"
 REQUEST_TOPIC = "request_fcm"
+MESSAGE_SENT = "sent"
 
 #Verify password
 @auth.verify_password
@@ -242,11 +243,13 @@ def sendPush():
             session.commit()
             conversation_id = new_conversation.id
             newMessage = Message(sender_id = sender_id, recipient_id = recipient_id, message = message, 
-                time_sent = time_sent, conversation_id =conversation_id, sender_first_name = user.last_name, sender_last_name = user.last_name)
+                time_sent = time_sent, conversation_id =conversation_id, sender_first_name = user.first_name, 
+                sender_last_name = user.last_name, sent_status =  MESSAGE_SENT)
             session.add(newMessage)
             session.commit()
             payload['id'] = newMessage.id
             payload['conversation_id'] = conversation_id
+            payload['sent_status'] = MESSAGE_SENT
             #data = json.dumps(payload)
             raw = {
                 "data": payload
@@ -262,12 +265,14 @@ def sendPush():
             filter(Conversation.user_two_id.in_([sender_id, recipient_id])).first() 
     old_conversation_id = old_conversation.id
     newMessage = Message(sender_id = sender_id, recipient_id = recipient_id, message = message,
-        time_sent = time_sent, conversation_id = old_conversation_id, sender_first_name = user.last_name, sender_last_name = user.last_name)
+        time_sent = time_sent, conversation_id = old_conversation_id, sender_first_name = user.first_name, 
+        sender_last_name = user.last_name, sent_status = MESSAGE_SENT)
     session.add(newMessage)
     session.commit()
 
     payload['id'] = newMessage.id
     payload['conversation_id'] = old_conversation_id
+    payload['sent_status'] = MESSAGE_SENT
     #j_data = json.dumps(payload)
 
     raw = {
