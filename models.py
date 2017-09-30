@@ -11,15 +11,14 @@ secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x
 
 class User(Base):
     __tablename__ = 'user'
-    id = Column(Integer, primary_key=True)
-    username = Column(String, index=True)
-    name = Column(String)
-    surname = Column(String)
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True)
+    first_name = Column(String)
+    last_name = Column(String)
     picture = Column(String)
-    email = Column(String)
     phone_no = Column(String)
     password_hash = Column(String)
-    user_id = Column(String)
+    
 
 
     @property
@@ -27,12 +26,11 @@ class User(Base):
         """Return object data in easily serializeable format"""
         return {
         'id' : self.id,
-        'username' : self.username,
+        'first_name' : self.first_name,
+        'last_name'  : self.last_name,
         'picture' : self.picture,
         'email' : self.email,
-        'name' : self.name,
-        'phone_no': self.phone_no,
-        'surname' : self.surname
+        'phone_no': self.phone_no
                 
             }
 
@@ -71,9 +69,11 @@ class Trip(Base):
     traveling_to_city = Column(String)
     traveling_date = Column(String)
     profile_image = Column(String)
+    user_first_name = Column(String)
+    user_last_name = Column(String)
     # posted_on = Column(DateTime (timezone=True), server_default = func.now())
     posted_on = Column(Bigint)
-    user_id = Column(Integer, ForeignKey('user.id'))
+    user_id = Column(Integer,  ForeignKey('user.id'), index = True)
     time_updated = Column(Bigint)
     user = relationship(User)
 
@@ -87,6 +87,8 @@ class Trip(Base):
         'traveling_from_state' : self.traveling_from_state,
         'traveling_from_city' : self.traveling_from_city,
         'traveling_to_state' : self.traveling_to_state,
+        'user_first_name' :     self.user_first_name,
+        'user_last_name'  :     self.user_last_name,
         'traveling_to_city' : self.traveling_to_city,
         'traveling_date' : self.traveling_date,
         'profile_image' :  self.profile_image,
@@ -112,6 +114,11 @@ class Request(Base):
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
 
+
+
+
+
+
     @property
     def serialize(self):
         """Return object data in easily serializeable format"""
@@ -132,10 +139,9 @@ class Request(Base):
 
 class Conversation(Base):
     __tablename__ = 'conversation'
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True , index = True)
     user_one_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     user_two_id =  Column(Integer, ForeignKey('user.id'), nullable=False)
-
     user_one = relationship("User",  foreign_keys="Conversation.user_one_id")
     user_two = relationship("User", foreign_keys="Conversation.user_two_id")
 
@@ -155,11 +161,13 @@ class Message(Base):
     id = Column(Integer, primary_key=True, autoincrement=True,  nullable=False)
     sender_id = Column(Integer, ForeignKey('user.id'))
     recipient_id = Column(Integer, ForeignKey('user.id'))
-    sender_username = Column(String)
+    sender_first_name = Column(String)
+    sender_last_name = Column(String)
     sender_picture = Column(String)
     message = Column(String)
+    sent_status = Column(String)
     time_sent = Column(Bigint)
-    conversation_id = Column(Integer, ForeignKey('conversation.id'))
+    conversation_id = Column(Integer,  ForeignKey('conversation.id'), index = True)
     sender = relationship("User",  foreign_keys = "Message.sender_id")
     recipient = relationship("User", foreign_keys = "Message.recipient_id")
     conversation = relationship(Conversation)
@@ -171,15 +179,15 @@ class Message(Base):
         'id' : self.id,
         'sender_id' : self.sender_id,
         'recipient_id' : self.recipient_id,
-        'sender_username' : self.sender_username,
+        'sender_first_name' : self.sender_first_name,
+        'sender_last_name' : self.sender_last_name,
         'sender_picture' : self.sender_picture,
+        'sent_status'    : self.sent_status,
         'message' : self.message,
         'time_sent' : self.time_sent,
         'conversation_id' : self.conversation_id
                 
             }
-
-
 
 
 username = 'postgres'
