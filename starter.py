@@ -39,25 +39,110 @@ reg_id = "fsYv_1fYukk:APA91bH7q15EiAhto98t2Ok4TR-4Ipx3WzhM1MwDJSLYLpfXu8oQpcYDGn
 TRIP_TOPIC = "trips_fcm"
 REQUEST_TOPIC = "request_fcm"
 
-
+#Verify password
 @auth.verify_password
-def verify_password(username_or_token_or_email, password):
+def verify_password(token_or_email, password):
     #Try to see if it's a token first
-    user_id = User.verify_auth_token(username_or_token_or_email)
+    user_id = User.verify_auth_token(token_or_email)
     if user_id:
         user = session.query(User).filter_by(id = user_id).one()
     else:
-        user = session.query(User).filter_by(username = username_or_token_or_email).first()
-        if user is None:
-            user = session.query(User).filter_by(email = username_or_token_or_email).first()
+        user = session.query(User).filter_by(email = token_or_email).first()
         if not user or not user.verify_password(password):
             return False
     g.user = user
     return True
 
+# User login entry
+@app.route('/api/v1/login')
+@auth.login_required
+def get_auth_token():
+    user = session.query(User).filter_by(email = g.user.email).first()
+    token = g.user.generate_auth_token()
+    user_token =  token.decode('ascii');
+    return jsonify({
+        "token": user_token,
+        "user": user.serialize
+     }) 
 # @app.route('/')
 # def start():
 #     return render_template('clientOAuth.html')
+
+                            #User
+#******************************************************************************************************************8#
+# Create new user
+@app.route('/api/v1/users/new', methods = ['POST'])
+def new_user():
+    first_name = request.json.get('first_name')
+    last_name = request.json.get('last_name')
+    password = request.json.get('password')
+    email = request.json.get('email')
+    #user_id = request.json.get('user_id')
+    if email is None or password is None:
+        print ("missing arguments")
+        abort(400)
+
+    if session.query(User).filter_by(email = email).first() is not None:
+        print("Existing user")    
+        return jsonify({'message':'Email address already exists'}), 303#, {'Location': url_for('get_user', id = user.id, _external = True)}
+
+    user = User(email = email, first_name = first_name, last_name = last_name)
+    user.hash_password(password)
+    session.add(user)
+    session.commit()
+    g.user = user
+    token = g.user.generate_auth_token()
+    #return jsonify({'token': token.decode('ascii')})
+    user_token =  token.decode('ascii');
+
+    return jsonify({
+        "token": user_token,
+        "user": user.serialize
+     }) 
+
+
+#Show a specfic user
+@app.route('/api/v1/users/<int:id>')
+def get_user(id):
+    user = session.query(User).filter_by(id=id).one()
+    if not user:
+        abort(400)
+    #return jsonify({'username': user.username})
+    return jsonify(user.serialize)
+
+#Show all users
+@app.route('/api/v1/users')
+def getAlluser():
+    users = session.query(User).all()
+    return  jsonify(users = [user.serialize for user in users])
+
+#Modify users profile
+@app.route('/api/v1/users/<int:user_id>/modify', methods = ['PUT'])
+def editUser(user_id):
+    phone_no = request.json.get('phone_no')
+    first_name = request.json.get('first_name')
+    last_name = request.json.get('last_name')
+    picture = request.json.get('picture')
+    user = session.query(User).filter_by(id =user_id).first()
+    if first_name:
+        user.first_name = first_name
+    if last_name:
+        user.last_name = last_name
+    if picture:
+         user.picture = picture
+    if phone_no:
+         user.phone_no = phone_no
+    session.add(user)
+    session.commit()
+    g.user = user
+    token = g.user.generate_auth_token()
+    #return jsonify({'token': token.decode('ascii')})
+    user_token =  token.decode('ascii');
+
+    return jsonify({
+        "token": user_token,
+        "user": user.serialize
+     })
 
 @app.route('/api/v1/oauth/<provider>', methods = ['POST'])
 def login(provider):
@@ -96,7 +181,7 @@ def login(provider):
         answer = requests.get(userinfo_url, params=params)
 
         data = answer.json()
-        username = data['name']
+        #username = data['name']
         picture = data['picture']
         email = data['email']
         user_id = data["id"]
@@ -107,7 +192,7 @@ def login(provider):
         #see if user exists, if it doesn't make a new one
         user = session.query(User).filter_by(email=email).first()
         if not user:
-            user = User(username = username, picture = picture, email = email, user_id = user_id)
+            user = User(usepicture = picture, email = email, user_id = user_id)
             session.add(user)
             session.commit()
         #STEP 4 - Make token
@@ -118,39 +203,20 @@ def login(provider):
     else:
         return 'Unrecoginized Provider'
 
-# User login entry
-@app.route('/api/v1/login')
-@auth.login_required
-def get_auth_token():
-
-    user = session.query(User).filter_by(username = g.user.username).first()
-    token = g.user.generate_auth_token()
-    user_token =  token.decode('ascii');
-
-    return jsonify({
-        "token": user_token,
-        "user": user.serialize
-     }) 
-
-
+                                                
+                                                #Messages
+#******************************************************************************************************#
+##Show all messages
 @app.route('/api/v1/users/<int:user_id>/messages')
 def showAllMessages(user_id):
     messages = session.query(Message).filter(or_(Message.sender_id == user_id, Message.recipient_id == user_id)).all()
     return jsonify({
         "messages": [message.serialize for message in messages]
      }) 
-
-@app.route('/api/v1/conversations/<int:conversation_id>/messages')
-def showMessagesForConversation(conversation_id):
-    messages = session.query(Message).filter_by(conversation_id = conversation_id).all()
-    return jsonify({
-        "messages": [message.serialize for message in messages]
-     }) 
-
+##Send message
 @app.route('/api/v1/messages/send', methods = ['POST'])
 def sendPush():
     #message = request.get_json()
-
     sender_id = request.json.get('sender_id')
     recipient_id = request.json.get('recipient_id')
     message  = request.json.get('message')
@@ -163,7 +229,8 @@ def sendPush():
     payload['time_sent'] = time_sent
     topic = "user"+ str(recipient_id)
     user = session.query(User).filter_by(id = sender_id).first()
-    payload['sender_username'] = user.username
+    payload['sender_first_name'] = user.first_name
+    payload['sender_last_name'] = user.last_name
     payload['sender_picture'] = user.picture
 
     #if session.query(Conversation).filter_by(email = email).first() is not None
@@ -175,7 +242,7 @@ def sendPush():
             session.commit()
             conversation_id = new_conversation.id
             newMessage = Message(sender_id = sender_id, recipient_id = recipient_id, message = message, 
-                time_sent = time_sent, conversation_id =conversation_id, sender_username = user.username)
+                time_sent = time_sent, conversation_id =conversation_id, sender_first_name = user.last_name, sender_last_name = user.last_name)
             session.add(newMessage)
             session.commit()
             payload['id'] = newMessage.id
@@ -195,7 +262,7 @@ def sendPush():
             filter(Conversation.user_two_id.in_([sender_id, recipient_id])).first() 
     old_conversation_id = old_conversation.id
     newMessage = Message(sender_id = sender_id, recipient_id = recipient_id, message = message,
-        time_sent = time_sent, conversation_id = old_conversation_id, sender_username = user.username)
+        time_sent = time_sent, conversation_id = old_conversation_id, sender_first_name = user.last_name, sender_last_name = user.last_name)
     session.add(newMessage)
     session.commit()
 
@@ -212,150 +279,45 @@ def sendPush():
     result = push_service.notify_topic_subscribers(topic_name = topic,  data_message = payload)
     pprint(result)
     return data
-
-    # data = {
-    #     "author": "TheRealJLin",
-    #     "message": "It it well, Amen! blessings and wisdom riches in money and glory, savation, USD billionaire",
-    #     "date": 1503357076600,
-    #     "authorKey": "key_jlin"
-    # }
-
-    #pprint(j_data)
-    #pprint(message)
    
     #result = push_service.notify_single_device(registration_id = reg_id, data_message= message)    
     #pprint(result)
     #return jsonify(newMessage.serialize)
 
-
-
-# Create new user
-@app.route('/api/v1/users/new', methods = ['POST'])
-def new_user():
-    username = request.json.get('username')
-    password = request.json.get('password')
-    email = request.json.get('email')
-    user_id = request.json.get('user_id')
-    if username is None or password is None or email is None:
-        print ("missing arguments")
-        abort(400)
-
-    if session.query(User).filter_by(username = username).first() is not None:
-        print("Existing user")    
-
-        return jsonify({'message':'user already exists'}), 302
-        #return make_response(jsonify(x=y), 201)
-
-    if session.query(User).filter_by(email = email).first() is not None:
-        print ("existing email addresss")
-
-        #user = session.query(User).filter_by(username=username).first()
-        return jsonify({'message':'Email address already exists'}), 303#, {'Location': url_for('get_user', id = user.id, _external = True)}
-
-    user = User(username = username, email = email, user_id = user_id)
-    user.hash_password(password)
-    session.add(user)
-    session.commit()
-    g.user = user
-    token = g.user.generate_auth_token()
-    #return jsonify({'token': token.decode('ascii')})
-    user_token =  token.decode('ascii');
-
+##Show messages in a converstaion
+@app.route('/api/v1/conversations/<int:conversation_id>/messages')
+def showMessagesForConversation(conversation_id):
+    messages = session.query(Message).filter_by(conversation_id = conversation_id).all()
     return jsonify({
-        "token": user_token,
-        "user": user.serialize
-     })  
+        "messages": [message.serialize for message in messages]
+     }) 
 
 
 
-    #return redirect(url_for('get_auth_token'))
-
-    #return jsonify({ 'username': user.username }), 201#, {'Location': url_for('get_user', id = user.id, _external = True)}
-    #return "user"+ str(user.id)
-
-#Show a specific user
-#TODO add method to change user pic
-# @app.route('/api/v1/request/token>')
-# def get_user(id):
-#     user = session.query(User).filter_by(id=id).one()
-#     if not user:
-#         abort(400)
-#     g.user = user
-
-
-
-@app.route('/api/v1/users/<int:id>')
-def get_user(id):
-    user = session.query(User).filter_by(id=id).one()
-    if not user:
-        abort(400)
-    #return jsonify({'username': user.username})
-    return jsonify(user.serialize)
-
-@app.route('/api/v1/users')
-def getAlluser():
-    users = session.query(User).all()
-    #return jsonify({'username': user.username})
-    return  jsonify(users = [user.serialize for user in users])
-
-@app.route('/api/v1/users/<int:user_id>/modify', methods = ['PUT'])
-def editUser(user_id):
-    phone_no = request.json.get('phone_no')
-    name = request.json.get('name')
-    picture = request.json.get('picture')
-    user = session.query(User).filter_by(id =user_id).first()
-    if name:
-        user.name = name
-    if picture:
-         user.picture = picture
-    if phone_no:
-         user.phone_no = phone_no
-    session.add(user)
-    session.commit()
-    g.user = user
-    token = g.user.generate_auth_token()
-    #return jsonify({'token': token.decode('ascii')})
-    user_token =  token.decode('ascii');
-
-    return jsonify({
-        "token": user_token,
-        "user": user.serialize
-     })
-    #
-    # return jsonify({
-    #     "token": "token"
-    #     "user": [user.serialize for user in users]
-    #  })     
-
-# cart = db.session.query(CartItem).all()
-# product_count = Product.query.count()
-
-# return jsonify({
-#     "results": [x.to_dict() for x in cart.all()]
-#     })       
-
-# def to_dict(self):
-#     return {
-#         "item_id": self.item_id,
-#         "item": self.item.name
-#     } 
-
-
-
-# @app.route('/api/resource')
-# @auth.login_required
-# def get_resource():
-#     return jsonify({ 'data': 'Hello, %s!' % g.user.username })
+                                                #Conversations
+#******************************************************************************************************************#
+#get conversations for a specific user, endpont currently unsed
 @app.route('/api/v1/users/<int:user_id>/conversations')
 def showAllConversation(user_id):
-    #conversations = session.query(Conversation).filter_by(user_one_id = user_id).all()
-
     conversations = session.query(Conversation).filter(or_(Conversation.user_one_id == user_id, Conversation.user_two_id == user_id)).all()
     return jsonify({
         "conversations": [conversation.serialize for conversation in conversations]
      }) 
 
+#Show all availavle conversations
+@app.route('/api/v1/conversations')
+def showAllConversations():
+    conversations = session.query(Conversation).all()
+    count = session.query(Conversation).count()
+    return jsonify({
+        "total_conversations": count,
+        "conversations": [conversation.serialize for conversation in conversations]
+     }) 
 
+                                                        
+
+                                                        #Trips
+#********************************************************************************************************************#
 # Show all available trips
 @app.route('/api/v1/trips')
 def showAllTrips():
@@ -366,14 +328,6 @@ def showAllTrips():
         "trips": [trip.serialize for trip in trips]
      }) 
 
-@app.route('/api/v1/conversations')
-def showAllConversations():
-    conversations = session.query(Conversation).all()
-    count = session.query(Conversation).count()
-    return jsonify({
-        "total_conversations": count,
-        "conversations": [conversation.serialize for conversation in conversations]
-     }) 
     #return jsonify(trips = [trip.serialize for trip in trips])
 
 # Show all trips of a particular user
@@ -389,6 +343,7 @@ def showATrip(trip_id):
     return jsonify(trip = trip.serialize)
 
 
+# Add a new trip
 @app.route('/api/v1/trips/<int:user_id>/new', methods = ['POST'])
 #@auth.login_required
 def createNewTrip(user_id):
@@ -401,16 +356,19 @@ def createNewTrip(user_id):
         traveling_date = request.json.get('traveling_date')
         posted_on = request.json.get('posted_on')
         time_updated = request.json.get('time_updated')
-        profile_image = request.json.get(' profile_image')
+        user = session.query(User).filter_by(id = user_id).first()
+        profile_image = user.picture
+        user_first_name = user.first_name
+        user_last_name = user.last_name
         user_id = user_id
         newTrip = Trip(phone_no = phone_no, traveling_from_state = traveling_from_state, 
             traveling_from_city = traveling_from_city, traveling_to_state = traveling_to_state,
             traveling_to_city = traveling_to_city, traveling_date = traveling_date, posted_on = posted_on, 
-            time_updated = time_updated, profile_image = profile_image, user_id = user_id
+            time_updated = time_updated, profile_image = profile_image, user_id = user_id,
+            user_first_name = user_first_name, user_last_name = user_last_name
         )
         session.add(newTrip)
         session.commit()
-        user = session.query(User).filter_by(id = user_id).first()
         trip_payload = {}
         trip_payload['profile_image'] = user.picture
         trip_payload['id'] = newTrip.id
@@ -423,9 +381,8 @@ def createNewTrip(user_id):
         trip_payload['posted_on'] = posted_on
         trip_payload['time_updated'] =  time_updated
         trip_payload['user_id'] = user_id
-
-        #trip_data = json.dumps(trip_payload)
-
+        trip_payload['user_first_name'] = user_first_name
+        trip_payload['user_last_name'] = user.last_name
         raw = {
         "data": trip_payload
         }
@@ -437,22 +394,15 @@ def createNewTrip(user_id):
         return trip_data
         
         #result = push_service.notify_single_device(registration_id = reg_id, data_message = trip_data)
-        # data = {
-        # "author": "TheRealJLin",
-        # "message": "It it well, Amen! blessings and wisdom riches in money and glory, savation, USD billionaire",
-        # "date": 1503357076600,
-        # "authorKey": "key_jlin"
-        # }
         #result = push_service.notify_topic_subscribers(topic_name= TRIP_TOPIC,  data_message = data) 
         #return jsonify(newTrip.serialize)
         
-
 # @auth.error_handler
 # def unauthorized():
 #     response = jsonify({'message':'Not allowed'})
 #     return response, 403
 
-#Make another app.route() decorator here that takes in an integer id in the URI
+#Modify a spcific trip
 @app.route("/api/v1/trips/<int:trip_id>", methods = ['PUT', 'DELETE'])
 @auth.login_required
 def editATrip(trip_id):
@@ -460,8 +410,6 @@ def editATrip(trip_id):
     if g.user.id != trip.user_id:
         print ("Not user")
         abort(400)
-        
-
     if request.method == 'PUT':
         phone_no = request.json.get('phone_no')
         traveling_from_state = request.json.get('traveling_from_state')
@@ -504,9 +452,14 @@ def deleteATrip(id, user_id):
     #return "Succesfully removed %s" % name + "from database"
     return redirect(url_for('showTripsForUser', user_id = user_id))
 
-# def getTrip(id):
-#     trip = session.query(Trip).filter_by(id = id).one()
-#     return jsonify(item = item.serialize)
+@app.route("/api/v1/trips/delete", methods = ['DELETE'])
+def deleteAllTrip():
+    trips = session.query(Trip).all()
+    count = session.query(Trip).count()
+    for trip in trips:
+        session.delete(trip)
+        session.commit()
+    return "successfully deleted {} trips".format(count)
 
 
 if __name__ == '__main__':
