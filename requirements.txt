@@ -1,0 +1,9 @@
+Flask_HTTPAuth==3.2.3
+SQLAlchemy==1.1.9
+passlib==1.7.1
+Flask==0.12.2
+requests==2.14.2
+pyfcm==1.4.2
+httplib2==0.10.3
+itsdangerous==0.24
+google_api_python_client==1.6.4
