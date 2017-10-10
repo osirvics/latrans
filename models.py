@@ -108,16 +108,19 @@ class Request(Base):
     item_location_city = Column(String)
     picture = Column(String)
     offer_amount = Column(String)
-    deliver_before = (String)
-    posted_on = (Bigint)
+    deliver_before = Column(String)
+    posted_on = Column(Bigint)
     time_updated = Column(Bigint)
+    phone_no = Column(String)
+    item_name = Column(String)
+    profile_image = Column(String)
+    user_first_name = Column(String)
+    user_last_name = Column(String)
     user_id = Column(Integer, ForeignKey('user.id'))
-    user = relationship(User)
+    userid = relationship(User)
 
-
-
-
-
+    def __iter__(self):
+        return self.__dict__.iteritems()
 
     @property
     def serialize(self):
@@ -129,13 +132,19 @@ class Request(Base):
         'item_location_state' : self.item_location_state,
         'item_location_city' : self.item_location_city,
         'picture' : self.picture,
-        'offer_amount' : self.offer_amount,
+        'offer_amount'    : self.offer_amount,
         'deliver_before' : self.deliver_before,
         'posted_on' : self.posted_on,
         'time_updated' : self.time_updated,
+        'phone_no' : self.phone_no,
+        'item_name'    : self.item_name,
+        'profile_image' : self.profile_image,
+        'user_first_name' : self.user_first_name,
+        'user_last_name' : self.user_last_name,
         'user_id' : self.user_id
-
+                
             }
+
 
 class Conversation(Base):
     __tablename__ = 'conversation'

@@ -467,6 +467,158 @@ def deleteAllTrips():
     return "successfully deleted {} trips".format(count)
 
 
+
+#                                                   Request
+######################################################################################################################
+# Show all available requests
+@app.route('/api/v1/requests')
+def showAllRequest():
+    orders = session.query(Request).all()
+    count = session.query(Request).count()
+    return jsonify({
+        "total_resulst": count,
+        "requests": [order.serialize for order in orders]
+     }) 
+
+    #return jsonify(trips = [trip.serialize for trip in trips])
+
+# Show all requests for a particular user
+@app.route('/api/v1/requests/<int:user_id>/users')
+def showRequestsForUser(user_id):
+    orders = session.query(Request).filter_by(user_id=user_id).all()
+
+    return jsonify(requests = [order.serialize for order in orders])
+
+#Show a specific request
+@app.route("/api/v1/requests/<int:request_id>")
+def showARequest(request_id):
+    order = session.query(Request).filter_by(id = request_id).one()
+    #print (order.posted_on)
+    #return "printed"
+    return jsonify(request = order.serialize)
+
+
+# Add new request
+@app.route('/api/v1/requests/<int:user_id>/new', methods = ['POST'])
+def addARequest(user_id):
+     if request.method == 'POST':
+        phone_no = request.json.get('phone_no')
+        delivery_state = request.json.get('delivery_state')
+        delivery_city = request.json.get('delivery_city')
+        item_location_state = request.json.get('item_location_state')
+        item_location_city = request.json.get('item_location_city')
+        posted_on = request.json.get('posted_on')
+        deliver_before = request.json.get('deliver_before')
+        picture = request.json.get('picture')
+        offer_amount = request.json.get('offer_amount')
+        time_updated = request.json.get('time_updated')
+        item_name = request.json.get('item_name') 
+        user = session.query(User).filter_by(id = user_id).first()
+        profile_image = user.picture
+        user_first_name = user.first_name
+        user_last_name = user.last_name
+        user_id = user_id
+        newRequest = Request(phone_no = phone_no, delivery_state = delivery_state, 
+            delivery_city = delivery_city, item_location_state = item_location_state,
+            item_location_city = item_location_city,  deliver_before =  deliver_before, posted_on = posted_on, 
+            time_updated = time_updated, profile_image = profile_image, user_id = user_id,
+            user_first_name = user.first_name, user_last_name = user.last_name, 
+            item_name = item_name, offer_amount = offer_amount, picture = picture
+        )
+        session.add(newRequest)
+        session.commit()
+        payload = {}
+        payload['profile_image'] = user.picture
+        payload['id'] = newRequest.id
+        payload['phone_no'] = phone_no
+        payload['delivery_state'] =  delivery_state
+        payload['delivery_city'] = delivery_city
+        payload['item_location_state'] = item_location_state
+        payload['item_location_city'] = item_location_city
+        payload['deliver_before'] = deliver_before
+        payload['posted_on'] = posted_on
+        payload['offer_amount'] = offer_amount
+        payload['item_name'] = item_name
+        payload['time_updated'] =  time_updated
+        payload['picture'] =  picture
+        payload['user_id'] = user_id
+        payload['user_first_name'] = user_first_name
+        payload['user_last_name'] = user.last_name
+
+        raw = {
+        "data": payload
+        }
+        request_data = json.dumps(raw)
+        #result = push_service.notify_single_device(registration_id = reg_id, data_message= payload) 
+        result = push_service.notify_topic_subscribers(topic_name = REQUEST_TOPIC,  data_message = payload)
+        pprint(result)
+        return request_data
+
+#Modify a spcific trip
+@app.route("/api/v1/requests/<int:request_id>", methods = ['PUT', 'DELETE'])
+@auth.login_required
+def editARequest(request_id):
+    if g.user.id != trip.user_id:
+        print ("Not user")
+        abort(400)
+    if request.method == 'PUT':
+
+        phone_no = request.json.get('phone_no')
+        delivery_state = request.json.get('delivery_state')
+        delivery_city = request.json.get('delivery_city')
+        item_location_state = request.json.get('item_location_state')
+        item_location_city = request.json.get('item_location_city')
+        posted_on = request.json.get('posted_on')
+        deliver_before = request.json.get(' deliver_before')
+        picture = request.json.get('picture')
+        offer_amount = request.json.get('offer_amount')
+        time_updated = request.json.get('time_updated')
+        item_name = request.json.get('item_name') 
+        return updateRequest(request_id, phone_no, delivery_state, delivery_city, item_location_state, item_location_city,
+        deliver_before, posted_on, time_updated, picture, offer_amount, item_name)
+
+        #Call the method to remove a puppy
+    elif request.method == 'DELETE':
+        return deleteATRequest(request_id, user_id)
+
+def updateRequest(request_id, phone_no, delivery_state, delivery_city, item_location_state, item_location_city,
+        deliver_before, posted_on, time_updated, picture, offer_amount, item_name):
+    reQuest = session.query(Request).filter_by(id = request_id).one()
+
+    reQuest.phone_no = phone_no
+    reQuest.delivery_state = delivery_state
+    reQuest.delivery_city  = delivery_city
+    reQuest.item_location_state = item_location_state
+    reQuest.item_location_city = item_location_city
+    reQuest.deliver_before = deliver_before
+    reQuest.posted_on = posted_on
+    reQuest.time_updated = time_updated
+    reQuest.item_name = item_name
+    reQuest.picture = picture
+    reQuest.offer_amount = offer_amount
+    session.add(reQuest)
+    session.commit()
+    #return "Succesfully updated item %s" % id
+    return redirect(url_for('showARequest', request_id = request_id))
+
+def deleteARequest(id, user_id):
+    reQuest = session.query(Request).filter_by(id = id).one()
+    session.delete(reQuest)
+    session.commit()
+    #return "Succesfully removed %s" % name + "from database"
+    return redirect(url_for('showRequestsForUser', user_id = user_id))
+
+@app.route("/api/v1/trips/delete", methods = ['DELETE'])
+def deleteAllRequests():
+    reQuest = session.query(Request).all()
+    count = session.query(Request).count()
+    for item in reQuest:
+        session.delete(item)
+        session.commit()
+    return "successfully deleted {} itmes".format(count)        
+
+
+
 if __name__ == '__main__':
     app.debug = True
     #app.config['SECRET_KEY'] = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
