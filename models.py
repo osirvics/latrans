@@ -201,7 +201,7 @@ class Message(Base):
 
 username = 'postgres'
 password = 'postgres'
-dbname='latrans'
+dbname='localhost:5432/latrans'
 url = "postgresql+psycopg2://%s:%s@%s" % (username, password, dbname)
 engine = create_engine(url)
  
