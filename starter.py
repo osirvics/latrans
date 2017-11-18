@@ -222,12 +222,16 @@ def sendPush():
     recipient_id = request.json.get('recipient_id')
     message  = request.json.get('message')
     time_sent = request.json.get('time_sent')
+    recipient_first_name = request.json.get('recipient_first_name')
+    recipient_last_name = request.json.get('recipient_last_name')
     
     payload = {}
     payload['sender_id'] = sender_id
     payload['recipient_id'] = recipient_id
     payload['message'] = message
     payload['time_sent'] = time_sent
+    payload['recipient_first_name'] = recipient_first_name
+    payload['recipient_last_name'] = recipient_last_name
     topic = "user"+ str(recipient_id)
     user = session.query(User).filter_by(id = sender_id).first()
     payload['sender_first_name'] = user.first_name
@@ -244,7 +248,8 @@ def sendPush():
             conversation_id = new_conversation.id
             newMessage = Message(sender_id = sender_id, recipient_id = recipient_id, message = message, 
                 time_sent = time_sent, conversation_id =conversation_id, sender_first_name = user.first_name, 
-                sender_last_name = user.last_name, sent_status =  MESSAGE_SENT)
+                sender_last_name = user.last_name, recipient_first_name = recipient_first_name, 
+                recipient_last_name = recipient_last_name, sent_status =  MESSAGE_SENT)
             session.add(newMessage)
             session.commit()
             payload['id'] = newMessage.id
@@ -266,7 +271,8 @@ def sendPush():
     old_conversation_id = old_conversation.id
     newMessage = Message(sender_id = sender_id, recipient_id = recipient_id, message = message,
         time_sent = time_sent, conversation_id = old_conversation_id, sender_first_name = user.first_name, 
-        sender_last_name = user.last_name, sent_status = MESSAGE_SENT)
+        sender_last_name = user.last_name, recipient_first_name = recipient_first_name, 
+                recipient_last_name = recipient_last_name, sent_status = MESSAGE_SENT)
     session.add(newMessage)
     session.commit()
 
