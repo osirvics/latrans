@@ -194,6 +194,8 @@ class Message(Base):
         'sender_first_name' : self.sender_first_name,
         'sender_last_name' : self.sender_last_name,
         'sender_picture' : self.sender_picture,
+        'recipient_first_name' : self.recipient_first_name,
+        'recipient_last_name' : self.recipient_last_name,
         'sent_status'    : self.sent_status,
         'message' : self.message,
         'time_sent' : self.time_sent,
