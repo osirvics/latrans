@@ -186,7 +186,7 @@ class Message(Base):
 
     @property
     def serialize(self):
-        """Return object data in easily serializeable format"""
+        """Return  object data in easily serializeable format"""
         return {
         'id' : self.id,
         'sender_id' : self.sender_id,
