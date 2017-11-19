@@ -165,6 +165,7 @@ class Conversation(Base):
         
             }
 
+## TODO add recipeint first and last name
 class Message(Base):
     __tablename__ = 'message'
     id = Column(Integer, primary_key=True, autoincrement=True,  nullable=False)
@@ -172,6 +173,8 @@ class Message(Base):
     recipient_id = Column(Integer, ForeignKey('user.id'))
     sender_first_name = Column(String)
     sender_last_name = Column(String)
+    recipient_first_name = Column(String)
+    recipient_last_name = Column(String)
     sender_picture = Column(String)
     message = Column(String)
     sent_status = Column(String)
