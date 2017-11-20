@@ -222,17 +222,20 @@ def sendPush():
     recipient_id = request.json.get('recipient_id')
     message  = request.json.get('message')
     time_sent = request.json.get('time_sent')
-    recipient_first_name = request.json.get('recipient_first_name')
-    recipient_last_name = request.json.get('recipient_last_name')
     
     payload = {}
     payload['sender_id'] = sender_id
     payload['recipient_id'] = recipient_id
     payload['message'] = message
     payload['time_sent'] = time_sent
+    #Recipient
+    recipient = session.query(User).filter_by(id = recipient_id).first()
+    recipient_first_name = recipient.first_name
+    recipient_last_name = recipient.last_name
     payload['recipient_first_name'] = recipient_first_name
     payload['recipient_last_name'] = recipient_last_name
     topic = "user"+ str(recipient_id)
+    #Sender
     user = session.query(User).filter_by(id = sender_id).first()
     payload['sender_first_name'] = user.first_name
     payload['sender_last_name'] = user.last_name
