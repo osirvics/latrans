@@ -345,13 +345,13 @@ def showAllTrips():
     #return jsonify(trips = [trip.serialize for trip in trips])
 
 # Show all trips of a particular user
-@app.route('/api/v1/trips/users/<int:user_id>')
+@app.route('/api/v1/trips/<int:user_id>/users')
 def showTripsForUser(user_id):
     trips = session.query(Trip).filter_by(user_id=user_id).all()
     return jsonify(trips = [trip.serialize for trip in trips])
 
 #Show a specific trip
-@app.route("/api/v1/trips/<int:trip_id>")
+@app.route("/api/v1/trips/<int:trip_id>/trip")
 def showATrip(trip_id):
     trip = session.query(Trip).filter_by(id = trip_id).one()
     return jsonify(trip = trip.serialize)
@@ -499,7 +499,7 @@ def showRequestsForUser(user_id):
     return jsonify(requests = [order.serialize for order in orders])
 
 #Show a specific request
-@app.route("/api/v1/requests/<int:request_id>")
+@app.route("/api/v1/requests/<int:request_id>/request")
 def showARequest(request_id):
     order = session.query(Request).filter_by(id = request_id).one()
     #print (order.posted_on)
